@@ -16,7 +16,6 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ContentProvider = game:GetService("ContentProvider")
-local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -32,7 +31,6 @@ local ROBUX_BALANCE = 0 -- số dư DEMO ban đầu trong bảng Buy Item tự t
 -- Số dư mô phỏng, chỉ dùng trong giao diện Buy Item do script tự tạo.
 local demoBalance = ROBUX_BALANCE
 local currentBalanceLabel = nil
-local currentBalanceBox = nil
 local ITEM_IMAGE = "" -- ảnh món, vd "rbxassetid://123456789" (để trống = ô xám)
 local ROBUX_ICON = "rbxassetid://79289060473744" -- logo Robux
 local PLUS_ICON = "rbxassetid://124086938389734" -- icon Roblox Plus
@@ -821,7 +819,6 @@ local function showBuyItem(opts)
 		}),
 	})
 	robuxIcon(balanceBox, 1)
-	currentBalanceBox = balanceBox
 	local balanceAmountLabel = create("TextLabel", {
 		Name = "Amount",
 		LayoutOrder = 2,
@@ -1170,7 +1167,6 @@ local function showBuyItem(opts)
 		darkenValue:Destroy()
 		if currentBalanceLabel == balanceAmountLabel then
 			currentBalanceLabel = nil
-			currentBalanceBox = nil
 		end
 	end)
 
@@ -1273,154 +1269,140 @@ applyButton.TextColor3 = panelColors.white
 applyButton.Parent = controlMain
 corner(UDim.new(0, 6)).Parent = applyButton
 
--- Nút ẩn/hiện số dư DEMO. Khi ẩn, chỉ còn đúng ký tự "-" và có thể kéo thả.
-local hideBalanceButton = Instance.new("TextButton")
-hideBalanceButton.Name = "HideBalanceButton"
-hideBalanceButton.Size = UDim2.new(1, -20, 0, 26)
-hideBalanceButton.Position = UDim2.fromOffset(10, 106)
-hideBalanceButton.BackgroundColor3 = Color3.fromRGB(45, 55, 75)
-hideBalanceButton.Text = "ẨN SỐ DƯ"
-hideBalanceButton.Font = Enum.Font.GothamBold
-hideBalanceButton.TextSize = 12
-hideBalanceButton.TextColor3 = panelColors.white
-hideBalanceButton.Parent = controlMain
-corner(UDim.new(0, 6)).Parent = hideBalanceButton
-controlMain.Size = UDim2.fromOffset(220, 140)
-
--- Nút dấu gạch nằm trên một ScreenGui riêng để kéo được tự do trên màn hình.
-local dashGui = Instance.new("ScreenGui")
-dashGui.Name = "DemoBalanceDash"
-dashGui.ResetOnSpawn = false
-dashGui.IgnoreGuiInset = true
-dashGui.DisplayOrder = 2147483647
-dashGui.Enabled = false
-dashGui.Parent = playerGui
-
-local dashButton = Instance.new("TextButton")
-dashButton.Name = "MovableDash"
-dashButton.Size = UDim2.fromOffset(24, 28)
-dashButton.AnchorPoint = Vector2.new(0.5, 0.5)
-dashButton.BackgroundTransparency = 1
-dashButton.BorderSizePixel = 0
-dashButton.AutoButtonColor = false
-dashButton.Text = "-"
-dashButton.Font = Enum.Font.GothamBold
-dashButton.TextSize = 22
-dashButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-dashButton.TextStrokeTransparency = 1
-dashButton.Parent = dashGui
-
-local balanceIsHidden = false
-local draggingDash = false
-local dragInput = nil
-local dragStart = nil
-local startPosition = nil
-
-local function setBalanceHidden(hidden)
-    balanceIsHidden = hidden
-    local balanceBox = currentBalanceBox
-    local balanceLabel = currentBalanceLabel
-
-    if hidden then
-        if balanceBox then
-            balanceBox.Visible = false
-        end
-        if balanceLabel and balanceLabel.Parent then
-            local center = balanceLabel.AbsolutePosition + balanceLabel.AbsoluteSize / 2
-            dashButton.Position = UDim2.fromOffset(center.X, center.Y)
-        else
-            dashButton.Position = UDim2.new(0.5, 0, 0.5, 0)
-        end
-        dashGui.Enabled = true
-        hideBalanceButton.Text = "HIỆN SỐ DƯ"
-    else
-        dashGui.Enabled = false
-        if balanceBox then
-            balanceBox.Visible = true
-        end
-        hideBalanceButton.Text = "ẨN SỐ DƯ"
-    end
-end
-
--- Kéo dấu gạch bằng chuột hoặc cảm ứng.
-dashButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-        draggingDash = true
-        dragStart = input.Position
-        startPosition = dashButton.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                draggingDash = false
-            end
-        end)
-    end
-end)
-
-dashButton.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if draggingDash and (input == dragInput or input.UserInputType == Enum.UserInputType.MouseMovement) then
-        local delta = input.Position - dragStart
-        dashButton.Position = UDim2.new(
-            startPosition.X.Scale, startPosition.X.Offset + delta.X,
-            startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
-        )
-    end
-end)
-
-hideBalanceButton.Activated:Connect(function()
-    setBalanceHidden(not balanceIsHidden)
-end)
+-- ==========================================
+-- MINIMIZE: CHỈ HIỂN THỊ DUY NHẤT DẤU "-"
+-- ==========================================
+local UserInputService = game:GetService("UserInputService")
 
 local miniButton = Instance.new("TextButton")
 miniButton.Name = "MiniButton"
-miniButton.Size = UDim2.fromOffset(40, 40)
-miniButton.Position = controlMain.Position
-miniButton.BackgroundColor3 = panelColors.panel
+miniButton.Size = UDim2.fromOffset(24, 24)
+miniButton.Position = UDim2.new(
+	controlMain.Position.X.Scale,
+	controlMain.Position.X.Offset + 192,
+	controlMain.Position.Y.Scale,
+	controlMain.Position.Y.Offset + 3
+)
+miniButton.BackgroundTransparency = 1
+miniButton.BorderSizePixel = 0
 miniButton.Text = "-"
-miniButton.Font = Enum.Font.GothamBold
-miniButton.TextSize = 24
-miniButton.TextColor3 = panelColors.white
+miniButton.Font = Enum.Font.Gotham
+miniButton.TextSize = 23
+miniButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+miniButton.TextStrokeTransparency = 1
+miniButton.TextXAlignment = Enum.TextXAlignment.Center
+miniButton.TextYAlignment = Enum.TextYAlignment.Center
 miniButton.AutoButtonColor = false
-miniButton.Parent = controlGui
-corner(UDim.new(0, 8)).Parent = miniButton
-local miniStroke = Instance.new("UIStroke")
-miniStroke.Color = panelColors.edge
-miniStroke.Thickness = 2
-miniStroke.Parent = miniButton
+miniButton.Active = true
+miniButton.Selectable = false
 miniButton.Visible = false
+miniButton.Parent = controlGui
+-- Không tạo UICorner hoặc UIStroke: khi thu nhỏ chỉ còn ký tự "-".
 
 local isMinimized = false
+local dragging = false
+local dragInput = nil
+local dragStart = nil
+local startPosition = nil
+local wasDragged = false
+
+-- Bắt đầu kéo bằng chuột hoặc cảm ứng.
+miniButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		wasDragged = false
+		dragStart = input.Position
+		startPosition = miniButton.Position
+		if input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+				dragInput = nil
+			end
+		end)
+	end
+end)
+
+-- Với chuột, theo dõi MouseMovement khi con trỏ đang ở trên nút.
+miniButton.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if not dragging then
+		return
+	end
+	if input ~= dragInput then
+		return
+	end
+
+	local delta = input.Position - dragStart
+	if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
+		wasDragged = true
+	end
+
+	miniButton.Position = UDim2.new(
+		startPosition.X.Scale,
+		startPosition.X.Offset + delta.X,
+		startPosition.Y.Scale,
+		startPosition.Y.Offset + delta.Y
+	)
+end)
+
 local hideButton = Instance.new("TextButton")
+hideButton.Name = "HideButton"
 hideButton.Size = UDim2.fromOffset(24, 24)
 hideButton.Position = UDim2.new(1, -28, 0, 3)
 hideButton.BackgroundTransparency = 1
+hideButton.BorderSizePixel = 0
 hideButton.Text = "-"
-hideButton.Font = Enum.Font.GothamBold
-hideButton.TextSize = 18
+hideButton.Font = Enum.Font.Gotham
+hideButton.TextSize = 20
 hideButton.TextColor3 = panelColors.white
+hideButton.TextStrokeTransparency = 1
+hideButton.AutoButtonColor = false
 hideButton.Parent = controlMain
 
 local function toggleMinimize()
-	isMinimized = not isMinimized
 	if isMinimized then
-		miniButton.Position = controlMain.Position
-		controlMain.Visible = false
-		miniButton.Visible = true
-	else
+		-- Khi mở lại, đưa góc trên-phải của bảng về vị trí dấu gạch.
+		controlMain.Position = UDim2.new(
+			miniButton.Position.X.Scale,
+			miniButton.Position.X.Offset - 192,
+			miniButton.Position.Y.Scale,
+			miniButton.Position.Y.Offset - 3
+		)
 		miniButton.Visible = false
 		controlMain.Visible = true
+		isMinimized = false
+	else
+		-- Đặt dấu gạch đúng tại góc trên-phải của bảng trước khi ẩn bảng.
+		miniButton.Position = UDim2.new(
+			controlMain.Position.X.Scale,
+			controlMain.Position.X.Offset + 192,
+			controlMain.Position.Y.Scale,
+			controlMain.Position.Y.Offset + 3
+		)
+		controlMain.Visible = false
+		miniButton.Visible = true
+		isMinimized = true
 	end
 end
 
+-- Sau thao tác kéo, Activated không được hiểu nhầm thành thao tác mở bảng.
+miniButton.Activated:Connect(function()
+	if not wasDragged then
+		toggleMinimize()
+	end
+end)
+
 hideButton.Activated:Connect(toggleMinimize)
-miniButton.Activated:Connect(toggleMinimize)
 
 applyButton.Activated:Connect(function()
 	local digits = amountBox.Text:gsub("[^%d]", "")
