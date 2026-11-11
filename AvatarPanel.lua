@@ -183,14 +183,54 @@ do
 	end)
 end
 
--- ========== LOGIC ĐỔI AVATAR ==========
-local currentDescription = nil -- avatar đang mượn (nil = avatar gốc)
+-- ========== LOGIC ĐỔI AVATAR (chạy ở client) ==========
+-- Humanoid:ApplyDescription() chỉ gọi được từ server, nên ở client mình tự lấy
+-- "bộ đồ" của người chơi rồi gắn lên nhân vật. Chỉ mình bạn thấy.
+
+local currentUserId = nil -- avatar đang mượn (nil = avatar gốc)
 local busy = false
 
-local function applyDescription(description)
+local function isClothing(inst)
+	return inst:IsA("Shirt") or inst:IsA("Pants") or inst:IsA("ShirtGraphic")
+		or inst:IsA("CharacterMesh") or inst:IsA("BodyColors")
+end
+
+local function applyAppearance(userId)
+	local appearance = Players:GetCharacterAppearanceAsync(userId)
 	local character = player.Character or player.CharacterAdded:Wait()
 	local humanoid = character:WaitForChild("Humanoid")
-	humanoid:ApplyDescription(description)
+	local head = character:WaitForChild("Head")
+
+	-- Xoá đồ cũ
+	humanoid:RemoveAccessories()
+	for _, child in ipairs(character:GetChildren()) do
+		if isClothing(child) then
+			child:Destroy()
+		end
+	end
+
+	-- Gắn đồ mới
+	for _, item in ipairs(appearance:GetChildren()) do
+		if item:IsA("Accessory") then
+			humanoid:AddAccessory(item:Clone())
+		elseif isClothing(item) then
+			item:Clone().Parent = character
+		end
+	end
+
+	-- Đổi mặt
+	local newHead = appearance:FindFirstChild("Head")
+	local newFace = newHead and newHead:FindFirstChildOfClass("Decal")
+	if newFace then
+		local oldFace = head:FindFirstChildOfClass("Decal")
+		if oldFace then
+			oldFace.Texture = newFace.Texture
+		else
+			newFace:Clone().Parent = head
+		end
+	end
+
+	appearance:Destroy()
 end
 
 local function applyByName(name)
@@ -213,21 +253,12 @@ local function applyByName(name)
 		return
 	end
 
-	local okDesc, description = pcall(function()
-		return Players:GetHumanoidDescriptionFromUserId(userId)
-	end)
-	if not okDesc then
-		setStatus("Không lấy được avatar của " .. name, Color3.fromRGB(255, 110, 110))
-		busy = false
-		return
-	end
-
-	local okApply, err = pcall(applyDescription, description)
+	local okApply, err = pcall(applyAppearance, userId)
 	if okApply then
-		currentDescription = description
-		setStatus("Đã mặc avatar của " .. name, Color3.fromRGB(110, 220, 130))
+		currentUserId = userId
+		setStatus("Đã mặc đồ của " .. name, Color3.fromRGB(110, 220, 130))
 	else
-		setStatus("Lỗi khi áp avatar: " .. tostring(err), Color3.fromRGB(255, 110, 110))
+		setStatus("Lỗi: " .. tostring(err), Color3.fromRGB(255, 110, 110))
 	end
 	busy = false
 end
@@ -237,19 +268,12 @@ local function resetAvatar()
 	busy = true
 	setStatus("Đang khôi phục avatar gốc...")
 
-	local ok, description = pcall(function()
-		return Players:GetHumanoidDescriptionFromUserId(player.UserId)
-	end)
+	local ok, err = pcall(applyAppearance, player.UserId)
 	if ok then
-		local okApply = pcall(applyDescription, description)
-		currentDescription = nil
-		if okApply then
-			setStatus("Đã về avatar gốc", Color3.fromRGB(110, 220, 130))
-		else
-			setStatus("Không áp được avatar gốc", Color3.fromRGB(255, 110, 110))
-		end
+		currentUserId = nil
+		setStatus("Đã về avatar gốc", Color3.fromRGB(110, 220, 130))
 	else
-		setStatus("Không lấy được avatar gốc", Color3.fromRGB(255, 110, 110))
+		setStatus("Lỗi: " .. tostring(err), Color3.fromRGB(255, 110, 110))
 	end
 	busy = false
 end
@@ -266,12 +290,10 @@ end)
 
 resetBtn.MouseButton1Click:Connect(resetAvatar)
 
--- Respawn xong thì mặc lại avatar đang mượn
+-- Respawn xong thì mặc lại đồ đang mượn
 player.CharacterAdded:Connect(function(character)
-	if not currentDescription then return end
-	local humanoid = character:WaitForChild("Humanoid")
+	if not currentUserId then return end
+	character:WaitForChild("Humanoid")
 	task.wait(0.5) -- đợi nhân vật load xong
-	pcall(function()
-		humanoid:ApplyDescription(currentDescription)
-	end)
+	pcall(applyAppearance, currentUserId)
 end)
