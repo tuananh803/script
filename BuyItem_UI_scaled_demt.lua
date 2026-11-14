@@ -333,7 +333,7 @@ local GIFT_STYLE = {
 	POS_Y = 0.192, -- tâm dòng 1: 19.2% chiều cao màn hình (lệch vài px thì chỉnh số này)
 	WIDTH_RATIO = 1.3723, -- bề rộng dòng 1 (chữ mẫu) / chiều cao màn hình (1301 / 948)
 	SIZE_SCALE = 1.06, -- phóng chữ to thêm 6% so với cỡ chuẩn ở trên (1 = đúng cỡ ảnh gốc; muốn to nữa thì tăng, vd 1.1)
-	OUTLINE_THICKNESS = 1, -- độ dày viền (px), cố định mọi màn hình như game thật. Muốn mỏng hơn nữa thì 0.5; 0 = tắt viền
+	OUTLINE_THICKNESS = 0.5, -- độ dày viền (px), cố định mọi màn hình như game thật. Muốn mỏng hơn nữa thì 0.5; 0 = tắt viền
 	OUTLINE_COLOR = Color3.fromRGB(45, 45, 45), -- viền XÁM ĐEN (không phải đen tuyền), theo ảnh game thật
 	OUTLINE_TRANSPARENCY = 0.5, -- viền hơi trong (0 = đặc, 1 = trong suốt)
 	MAX_WIDTH_RATIO = 0.96, -- chữ không được rộng quá 96% chiều rộng màn hình
