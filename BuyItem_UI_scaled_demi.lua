@@ -346,7 +346,7 @@ local GIFT_STYLE = {
 	POS_X = 0.5, -- tâm chữ: giữa màn hình theo chiều ngang
 	POS_Y = 0.06, -- tâm dòng 1: 6% chiều cao màn hình (giống script ẤN CHỮ G; muốn thấp xuống thì tăng số này)
 	TEXT_SIZE = 33, -- cỡ chữ cố định (giống script ẤN CHỮ G). Muốn to / nhỏ hơn thì sửa số này
-	OUTLINE_THICKNESS = 0.5, -- độ dày viền (px), cố định mọi màn hình như game thật. Muốn mỏng hơn nữa thì 0.5; 0 = tắt viền
+	OUTLINE_THICKNESS = 1, -- độ dày viền (px), cố định mọi màn hình như game thật. Muốn mỏng hơn nữa thì 0.5; 0 = tắt viền
 	OUTLINE_COLOR = Color3.fromRGB(45, 45, 45), -- viền XÁM ĐEN (không phải đen tuyền), theo ảnh game thật
 	OUTLINE_TRANSPARENCY = 0.5, -- viền hơi trong (0 = đặc, 1 = trong suốt)
 	MAX_WIDTH_RATIO = 0.96, -- chữ không được rộng quá 96% chiều rộng màn hình
