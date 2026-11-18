@@ -526,9 +526,9 @@ do
 		targetPlayer = tostring(targetPlayer or "a friend")
 
 		-- dòng 1: "Sending gift <tên trái> to người nhận..." (phần <...> màu vàng); bóng dùng chữ thường cùng nội dung
-		currentPlain = ("Sending gift <%s> to %s..."):format(itemName, targetPlayer)
+		currentPlain = ("Sending gift <%s> to %s"):format(itemName, targetPlayer)
 		giftTop.shadow.Text = currentPlain
-		giftTop.main.Text = ('Sending gift <font color="%s">&lt;%s&gt;</font> to %s...'):format(
+		giftTop.main.Text = ('Sending gift <font color="%s">&lt;%s&gt;</font> to %s'):format(
 			S.YELLOW_HEX,
 			escapeRich(itemName),
 			escapeRich(targetPlayer)
