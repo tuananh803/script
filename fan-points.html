@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fan Points — Điểm kênh tự động</title>
+<style>
+:root{--bg:#12131a;--card:#1b1d27;--line:#2a2d3b;--ink:#f2f3f8;--muted:#8d92a5;--acc:#7c5cff;--acc2:#22d3a6;--warn:#ffb020}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.app{display:grid;grid-template-columns:330px 1fr;gap:16px;max-width:1100px;margin:0 auto;padding:16px;min-height:100vh}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:13px;margin:0 0 10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.tag{display:inline-block;background:#2a2350;color:#c9bcff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+input,textarea{width:100%;background:#12131a;border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px;font:inherit}
+textarea{min-height:64px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid #7c5cff66;border-color:var(--acc)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+button{background:var(--acc);color:#fff;border:0;border-radius:9px;padding:10px 12px;font-weight:700;cursor:pointer;font:inherit;font-weight:700}
+button.ghost{background:#262939;color:var(--ink)}button:hover{filter:brightness(1.1)}
+.status{display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px}
+.dot{width:10px;height:10px;border-radius:50%;background:#555}.dot.on{background:var(--acc2);box-shadow:0 0 8px var(--acc2)}.dot.wait{background:var(--warn)}
+.hint{font-size:11px;color:var(--muted);margin-top:6px}
+details{margin-top:12px;font-size:12px;color:var(--muted)}pre{white-space:pre-wrap;word-break:break-all;background:#12131a;border-radius:8px;padding:8px;max-height:160px;overflow:auto;margin:6px 0 0}
+.stage{display:flex;flex-direction:column;gap:16px;min-width:0}
+#alertZone{min-height:110px;display:flex;align-items:center;justify-content:center}
+.alert{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#2b2160,#1f4a47);border:1px solid #5a4cc2;border-radius:16px;padding:14px 22px;animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+.alert.out{animation:out .4s forwards}
+.alert .av{width:64px;height:64px;border-radius:50%;border:3px solid var(--acc2)}
+.alert .nm{font-weight:800;font-size:18px}.alert .pt{font-size:26px;font-weight:900;color:var(--acc2)}.alert .gf{font-size:12px;color:#cfd3e6}
+@keyframes pop{from{transform:scale(.6) translateY(20px);opacity:0}to{transform:none;opacity:1}}
+@keyframes out{to{transform:translateY(-16px);opacity:0}}
+.av{width:40px;height:40px;border-radius:50%;object-fit:cover;background:linear-gradient(135deg,#7c5cff,#22d3a6);display:grid;place-items:center;font-weight:800;flex:none;overflow:hidden}
+.lb-row{display:flex;align-items:center;gap:12px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.lb-row:last-child{border:0}.rank{width:22px;color:var(--muted);font-weight:800;text-align:center}
+.lb-name{flex:1;min-width:0;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lb-name small{display:block;color:var(--muted);font-weight:400;font-size:11px}
+.lb-pts{font-weight:900;color:var(--acc2)}.empty{color:var(--muted);text-align:center;padding:24px 0}
+body.obs{background:transparent}body.obs .app{grid-template-columns:1fr;padding:8px}body.obs #panel,body.obs .lbhead button{display:none}body.obs .card{background:#12131acc}
+@media(max-width:760px){.app{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="card" id="panel">
+    <h1>Fan Points</h1>
+    <span class="tag">ĐIỂM NỘI BỘ CỦA KÊNH · KHÔNG PHẢI XU TIKTOK</span>
+
+    <label for="wsUrl">Địa chỉ WebSocket của IndoFinity</label>
+    <input id="wsUrl" placeholder="ws://localhost:21213/" spellcheck="false">
+    <div class="hint">Dán đúng địa chỉ WebSocket mà IndoFinity cung cấp (xem mục Developer/API hoặc overlay trong app).</div>
+
+    <div class="status"><span class="dot" id="dot"></span><span id="stText">Chưa kết nối</span></div>
+    <div class="row"><button id="btnConn">Kết nối</button><button class="ghost" id="btnTest">Test gift</button></div>
+
+    <label for="rate">Số điểm cho mỗi 1 xu (diamond) của quà</label>
+    <input id="rate" type="number" min="0" step="0.1" value="1">
+
+    <label for="minD">Bỏ qua quà dưới (xu)</label>
+    <input id="minD" type="number" min="0" value="1">
+
+    <label for="over">Quy đổi riêng theo quà (điểm mỗi 1 quà)</label>
+    <textarea id="over" placeholder="Rose=5&#10;Corgi=50"></textarea>
+    <div class="hint">Mỗi dòng một quà: Tên quà=điểm. Quà không có ở đây sẽ tính theo tỉ lệ ở trên.</div>
+
+    <div class="row" style="margin-top:14px"><button class="ghost" id="btnSave">Lưu cài đặt</button><button class="ghost" id="btnObs">Copy link OBS</button></div>
+
+    <details><summary>Tin nhắn thô gần nhất (để debug)</summary><pre id="log">—</pre></details>
+  </aside>
+
+  <main class="stage">
+    <div class="card"><div id="alertZone"><span class="empty">Chờ có người tặng quà…</span></div></div>
+    <div class="card">
+      <div class="lbhead row" style="align-items:center;justify-content:space-between;margin-bottom:6px">
+        <h2 style="margin:0">Bảng xếp hạng Fan Points</h2>
+        <button class="ghost" id="btnReset" style="flex:none;padding:6px 10px;font-size:12px">Reset</button>
+      </div>
+      <div id="lb"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const qs=new URLSearchParams(location.search);
+if(qs.get('obs'))document.body.classList.add('obs');
+
+/* ---------- Lưu trữ an toàn ---------- */
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+let cfg=Object.assign({ws:'ws://localhost:21213/',rate:1,min:1,over:''},store.get('fp_cfg',{}));
+if(qs.get('ws'))cfg.ws=qs.get('ws');
+if(qs.get('rate'))cfg.rate=Number(qs.get('rate'));
+if(qs.get('min'))cfg.min=Number(qs.get('min'));
+if(qs.get('over'))cfg.over=qs.get('over');
+let board=store.get('fp_board',{});
+
+function fillForm(){$('wsUrl').value=cfg.ws;$('rate').value=cfg.rate;$('minD').value=cfg.min;$('over').value=cfg.over}
+function readForm(){cfg={ws:$('wsUrl').value.trim(),rate:Number($('rate').value)||0,min:Number($('minD').value)||0,over:$('over').value};store.set('fp_cfg',cfg)}
+function overrides(){const m={};cfg.over.split(/[\n,;]+/).forEach(l=>{const [k,v]=l.split('=');if(k&&v&&!isNaN(v))m[k.trim().toLowerCase()]=Number(v)});return m}
+
+/* ---------- Chuẩn hóa tin nhắn (chịu được nhiều định dạng) ---------- */
+function normalize(msg){
+  if(!msg||typeof msg!=='object')return null;
+  const ev=String(msg.event||msg.type||msg.eventType||'').toLowerCase();
+  if(!ev.includes('gift'))return null;
+  const d=msg.data||msg.payload||msg, u=d.user||{};
+  // Quà combo: chỉ tính khi kết thúc chuỗi, tránh cộng trùng
+  if(d.giftType===1&&d.repeatEnd===false)return null;
+  const gift=typeof d.gift==='object'&&d.gift?d.gift:{};
+  const handle=d.uniqueId||u.uniqueId||u.username||d.username||'';
+  const name=d.nickname||u.nickname||u.displayName||handle||'Ẩn danh';
+  const avatar=d.profilePictureUrl||u.profilePictureUrl||u.avatar||d.avatar||d.avatarUrl||(u.avatarThumb&&u.avatarThumb.urlList&&u.avatarThumb.urlList[0])||'';
+  const giftName=d.giftName||gift.name||(typeof d.gift==='string'?d.gift:'Quà');
+  const unit=Number(d.diamondCount??gift.diamondCount??d.diamonds??d.coins??0);
+  const count=Number(d.repeatCount??d.count??d.amount??1)||1;
+  return {key:handle||name,handle,name,avatar,giftName,unit,count};
+}
+
+function toPoints(g){
+  const o=overrides()[g.giftName.toLowerCase()];
+  if(g.unit*g.count<cfg.min&&o===undefined)return 0;
+  const per=o!==undefined?o:g.unit*cfg.rate;
+  return Math.floor(per*g.count);
+}
+
+/* ---------- Xử lý quà ---------- */
+function handleGift(g){
+  const pts=toPoints(g);
+  if(pts<=0)return;
+  const r=board[g.key]||(board[g.key]={name:g.name,handle:g.handle,avatar:g.avatar,points:0,gifts:0});
+  r.name=g.name;if(g.avatar)r.avatar=g.avatar;r.points+=pts;r.gifts+=g.count;
+  store.set('fp_board',board);renderBoard();
+  queueAlert({...g,pts});
+}
+
+/* ---------- Avatar ---------- */
+function avatarEl(src,name,cls){
+  const el=document.createElement(src?'img':'div');el.className='av '+(cls||'');
+  if(src){el.src=src;el.alt='';el.referrerPolicy='no-referrer';el.onerror=()=>{const f=avatarEl('',name,cls);el.replaceWith(f)}}
+  else el.textContent=(name||'?').trim().slice(0,1).toUpperCase();
+  return el;
+}
+
+/* ---------- Alert (hàng đợi) ---------- */
+const queue=[];let busy=false;
+function queueAlert(a){queue.push(a);if(!busy)nextAlert()}
+function nextAlert(){
+  const a=queue.shift();
+  if(!a){busy=false;if(!$('alertZone').children.length)$('alertZone').innerHTML='<span class="empty">Chờ có người tặng quà…</span>';return}
+  busy=true;const z=$('alertZone');z.innerHTML='';
+  const box=document.createElement('div');box.className='alert';
+  box.appendChild(avatarEl(a.avatar,a.name,'av'));
+  const t=document.createElement('div');
+  const nm=document.createElement('div');nm.className='nm';nm.textContent=a.name;
+  const pt=document.createElement('div');pt.className='pt';pt.textContent='+'+a.pts.toLocaleString('en-US')+' Fan Points';
+  const gf=document.createElement('div');gf.className='gf';gf.textContent=a.giftName+' ×'+a.count;
+  t.append(nm,pt,gf);box.appendChild(t);z.appendChild(box);
+  setTimeout(()=>box.classList.add('out'),queue.length>3?1800:3800);
+  setTimeout(()=>{box.remove();nextAlert()},queue.length>3?2200:4200);
+}
+
+/* ---------- Bảng xếp hạng ---------- */
+function renderBoard(){
+  const lb=$('lb');lb.innerHTML='';
+  const rows=Object.values(board).sort((a,b)=>b.points-a.points).slice(0,10);
+  if(!rows.length){lb.innerHTML='<div class="empty">Chưa có điểm nào</div>';return}
+  rows.forEach((r,i)=>{
+    const row=document.createElement('div');row.className='lb-row';
+    const rk=document.createElement('div');rk.className='rank';rk.textContent=i+1;
+    const nm=document.createElement('div');nm.className='lb-name';nm.textContent=r.name;
+    if(r.handle){const s=document.createElement('small');s.textContent='@'+r.handle;nm.appendChild(s)}
+    const pt=document.createElement('div');pt.className='lb-pts';pt.textContent=r.points.toLocaleString('en-US');
+    row.append(rk,avatarEl(r.avatar,r.name),nm,pt);lb.appendChild(row);
+  });
+}
+
+/* ---------- WebSocket ---------- */
+let ws=null,wantOn=false,retry=null;
+function setStatus(s,t){$('dot').className='dot '+s;$('stText').textContent=t}
+function connect(){
+  clearTimeout(retry);
+  if(!cfg.ws){setStatus('','Chưa nhập địa chỉ WebSocket');return}
+  wantOn=true;setStatus('wait','Đang kết nối…');
+  try{ws=new WebSocket(cfg.ws)}catch(e){setStatus('','Địa chỉ không hợp lệ');return}
+  ws.onopen=()=>{setStatus('on','Đã kết nối · đang chờ quà');$('btnConn').textContent='Ngắt kết nối'};
+  ws.onmessage=ev=>{
+    let m;try{m=JSON.parse(ev.data)}catch(e){return}
+    const logEl=$('log');logEl.textContent=(JSON.stringify(m).slice(0,400)+'\n'+(logEl.textContent==='—'?'':logEl.textContent)).split('\n').slice(0,8).join('\n');
+    const g=normalize(m);if(g)handleGift(g);
+  };
+  ws.onclose=()=>{
+    if(wantOn){setStatus('wait','Mất kết nối · thử lại sau 3s');retry=setTimeout(connect,3000)}
+    else{setStatus('','Chưa kết nối');$('btnConn').textContent='Kết nối'}
+  };
+  ws.onerror=()=>{};
+}
+function disconnect(){wantOn=false;clearTimeout(retry);if(ws)ws.close();setStatus('','Chưa kết nối');$('btnConn').textContent='Kết nối'}
+
+/* ---------- Nút bấm ---------- */
+$('btnConn').onclick=()=>{readForm();wantOn?disconnect():connect()};
+$('btnSave').onclick=()=>{readForm();setStatus($('dot').className.includes('on')?'on':'','Đã lưu cài đặt')};
+$('btnTest').onclick=()=>{
+  readForm();
+  const demo=[{name:'Zii Dè Kàizèn',handle:'zii_de_kaizen',giftName:'Rose',unit:1,count:5},{name:'promler',handle:'problem2042',giftName:'Peeka-Bros',unit:199,count:1},{name:'Chương',handle:'chuong',giftName:'Corgi',unit:299,count:1}];
+  const d=demo[Math.floor(Math.random()*demo.length)];
+  handleGift({...d,key:d.handle,avatar:''});
+};
+$('btnReset').onclick=()=>{if(confirm('Xóa toàn bộ điểm của mọi người?')){board={};store.set('fp_board',board);renderBoard()}};
+$('btnObs').onclick=()=>{
+  readForm();
+  const u=new URL(location.href.split('?')[0]);
+  u.searchParams.set('obs','1');u.searchParams.set('ws',cfg.ws);u.searchParams.set('rate',cfg.rate);u.searchParams.set('min',cfg.min);
+  if(cfg.over.trim())u.searchParams.set('over',cfg.over.trim().replace(/\n/g,','));
+  const link=u.toString();
+  (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(()=>alert('Đã copy link OBS. Dán vào Browser Source.')).catch(()=>prompt('Copy link này:',link));
+};
+
+fillForm();renderBoard();
+if(qs.get('obs'))connect();
+</script>
+</body>
+</html>
